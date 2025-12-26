@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>My Bead Picker</title>
+<style>
+  :root { --bg:#0b0c10; --card:#14161d; --text:#eef0f4; --muted:#aab0bd; --line:#252a36; }
+  *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
+  body{margin:0;background:var(--bg);color:var(--text)}
+  .wrap{max-width:760px;margin:0 auto;padding:16px}
+  h1{margin:6px 0 4px;font-size:26px}
+  .sub{margin:0;color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px}
+  .row{display:grid;gap:10px;margin:12px 0}
+  label{color:var(--muted);font-size:14px}
+  select,button{width:100%;padding:12px 12px;border-radius:12px;border:1px solid var(--line);background:#1b2030;color:var(--text);font-size:16px}
+  button{cursor:pointer}
+  button:hover{filter:brightness(1.06)}
+  .tag{display:inline-block;padding:6px 10px;border:1px solid var(--line);border-radius:999px;color:var(--muted);font-size:13px;margin:6px 6px 0 0}
+  .result h2{margin:10px 0 6px;font-size:18px}
+  ul{margin:8px 0 0 18px;color:var(--muted)}
+  hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+</style>
+</head>
+<body>
+  <header class="wrap">
+    <h1>My Bead Picker</h1>
+    <p class="sub">Pick how you feel → get wrist + intention + energy plan.</p>
+  </header>
+
+  <main class="wrap card">
+    <div class="row">
+      <div>
+        <label>How do you feel right now?</label>
+        <select id="state">
+          <option value="stressed">Stressed / anxious / overwhelmed</option>
+          <option value="tired">Tired / drained / flat</option>
+          <option value="scattered">Scattered / unfocused</option>
+          <option value="balanced">Balanced / good</option>
+        </select>
+      </div>
+
+      <div>
+        <label>What kind of day is it?</label>
+        <select id="day">
+          <option value="work">Work / school / meetings</option>
+          <option value="long">Long endurance day</option>
+          <option value="social">Crowds / social / lots of people</option>
+          <option value="rest">Rest / recovery day</option>
+        </select>
+      </div>
+
+      <div>
+        <label>How many are you wearing?</label>
+        <select id="count">
+          <option value="2">2 total (1 per wrist)</option>
+          <option value="4" selected>4 total (2 per wrist)</option>
+        </select>
+      </div>
+
+      <button id="go">Show my plan</button>
+    </div>
+
+    <div class="result" id="out"></div>
+  </main>
+
+<script>
+const beads = {
+  lava: { name:"Lava stone", energy:"Deep grounding, calms stress", intention:"Stability + calm", wrist:"LEFT" },
+  onyx: { name:"Black Onyx", energy:"Protection, boundaries, inner strength", intention:"Protection + strength", wrist:"LEFT" },
+  river: { name:"White/River Jasper", energy:"Gentle grounding, emotional balance", intention:"Calm clarity", wrist:"LEFT" },
+  grey: { name:"Grey Jasper (Picasso-type)", energy:"Mental grounding, organization", intention:"Clarity + order", wrist:"LEFT" },
+  tiger: { name:"Tiger’s Eye", energy:"Focus, confidence, drive", intention:"Confident action", wrist:"RIGHT" },
+  picture: { name:"Picture/Yellow Jasper", energy:"Endurance, steady productivity", intention:"Resilience + stamina", wrist:"RIGHT" }
+};
+
+function plan(state, day, count){
+  // base roles
+  let left = [];
+  let right = [];
+  let pocket = null;
+
+  if(state==="stressed"){
+    left = ["lava","onyx"];
+    right = ["tiger"];
+    pocket = "river";
+  } else if(state==="tired"){
+    left = ["river","grey"];
+    right = ["tiger","picture"];
+    pocket = "onyx";
+  } else if(state==="scattered"){
+    left = ["grey","onyx"];
+    right = ["tiger","picture"];
+    pocket = "river";
+  } else { // balanced
+    left = ["river","onyx"];
+    right = ["tiger","picture"];
+    pocket = "lava";
+  }
+
+  // day modifiers
+  if(day==="social"){
+    // more boundaries
+    left = ["onyx", left.includes("river") ? "river" : "grey"];
+    pocket = "onyx";
+  }
+  if(day==="rest"){
+    // softer, less action
+    right = ["tiger"];
+    left = ["river","grey"];
+    pocket = "lava";
+  }
+  if(day==="long"){
+    // stamina emphasis
+    right = ["tiger","picture"];
+  }
+
+  // count adjustment
+  if(count==="2"){
+    // choose the strongest one per wrist
+    left = [left[0]]; // first is primary
+    right = [right[0]];
+    pocket = null;
+  } else {
+    // ensure max 2 per wrist
+    left = left.slice(0,2);
+    right = right.slice(0,2);
+  }
+
+  // safety: avoid lava + river together (too heavy grounding) if possible
+  if(left.includes("lava") && left.includes("river")){
+    left = ["lava","onyx"];
+  }
+
+  return {left,right,pocket};
+}
+
+function renderList(keys){
+  return `<ul>${keys.map(k=>`<li><b>${beads[k].name}</b> — ${beads[k].energy}<br><span style="color:#aab0bd">Intention: ${beads[k].intention}</span></li>`).join("")}</ul>`;
+}
+
+document.getElementById("go").addEventListener("click", ()=>{
+  const state = document.getElementById("state").value;
+  const day = document.getElementById("day").value;
+  const count = document.getElementById("count").value;
+
+  const p = plan(state, day, count);
+
+  const out = document.getElementById("out");
+  out.innerHTML = `
+    <div>
+      <span class="tag">LEFT = receive/ground/protect</span>
+      <span class="tag">RIGHT = act/focus/energy</span>
+      <span class="tag">${count==="4" ? "Max 2 per wrist" : "1 per wrist"}</span>
+    </div>
+    <hr />
+    <h2>LEFT wrist</h2>
+    ${renderList(p.left)}
+    <hr />
+    <h2>RIGHT wrist</h2>
+    ${renderList(p.right)}
+    ${p.pocket ? `
+      <hr />
+      <h2>Pocket (optional backup)</h2>
+      <ul><li><b>${beads[p.pocket].name}</b> — on-demand support when you touch it.<br>
+      <span style="color:#aab0bd">Best pocket: ${beads[p.pocket].wrist} pocket • Intention: ${beads[p.pocket].intention}</span></li></ul>
+    ` : ``}
+    <hr />
+    <div class="tag">Quick rule</div>
+    <p class="sub">If you feel heavy → remove 1 LEFT. If you feel edgy → remove 1 RIGHT.</p>
+  `;
+});
+</script>
+</body>
+</html>
